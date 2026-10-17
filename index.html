@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LTG Campaign Dashboard</title>
+    <!-- Import Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; color: #333; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #2c3e50; }
+        .stats-grid { display: flex; justify-content: space-around; margin-top: 30px; }
+        .stat-box { text-align: center; padding: 20px; background: #ecf0f1; border-radius: 8px; width: 40%; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);}
+        .stat-box h3 { margin: 0; font-size: 16px; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px;}
+        .stat-box p { margin: 10px 0 0; font-size: 32px; font-weight: bold; color: #2980b9; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Live To Give (LTG) Campaign Dashboard</h1>
+    <canvas id="ltgChart" width="400" height="200"></canvas>
+    
+    <div class="stats-grid">
+        <div class="stat-box">
+            <h3>2025 Final Total (14 Weeks)</h3>
+            <!-- Summing the first 14 weeks of 2025 to match the 2026 duration -->
+            <p>23,548</p> 
+        </div>
+        <div class="stat-box">
+            <h3>2026 Total (Current)</h3>
+            <p id="currentTotal">Loading...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 1. Static 2025 Data (First 14 weeks only, for 1:1 comparison)
+    const data2025 = [961, 674, 532, 695, 1749, 947, 700, 796, 603, 212, 898, 1730, 8237, 4720]; 
+
+    // REPLACE THIS URL WITH YOUR DEPLOYED GOOGLE APPS SCRIPT WEB APP URL
+    const GOOGLE_APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx3off8LVRKqeFievUltLr5XLjpjjl6g_KcowqtTLZuxnmt3dS4AfuvCebXx9c0FySg2g/exec";
+
+    async function fetchAndRenderData() {
+        try {
+            // 2. Fetch the dynamic 2026 data from the Google Apps Script API
+            const response = await fetch(GOOGLE_APP_SCRIPT_URL);
+            const data2026Payload = await response.json();
+            
+            // Extract the 'total' values. Empty future weeks will be 'null', which stops the line from dropping to 0
+            const data2026 = data2026Payload.weeks.map(w => w.total);
+            
+            // Calculate running total for the dashboard box
+            const currentTotal = data2026.reduce((sum, val) => sum + (val || 0), 0);
+            document.getElementById('currentTotal').innerText = currentTotal.toLocaleString();
+
+            // 3. Render the Chart using Chart.js
+            const ctx = document.getElementById('ltgChart').getContext('2d');
+            const labels = Array.from({length: 14}, (_, i) => `Week ${i + 1}`);
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '2026 Campaign (Live)',
+                            data: data2026,
+                            borderColor: '#2ecc71', // Green
+                            backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4,
+                            spanGaps: false // Keeps the line from drawing into the future
+                        },
+                        {
+                            label: '2025 Campaign (Static)',
+                            data: data2025,
+                            borderColor: '#bdc3c7', // Grey
+                            borderWidth: 2,
+                            borderDash: [5, 5], // Dashed line to indicate historical data
+                            fill: false,
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'top' },
+                        title: { display: false }
+                    },
+                    scales: {
+                        y: { 
+                            beginAtZero: true,
+                            title: { display: true, text: 'Bhagavad Gitas Distributed' }
+                        }
+                    }
+                }
+            });
+        } catch (error) {
+            console.error("Error fetching 2026 data:", error);
+            document.getElementById('currentTotal').innerText = "Error";
+        }
+    }
+
+    // Initialize the dashboard
+    fetchAndRenderData();
+</script>
+
+</body>
+</html>
