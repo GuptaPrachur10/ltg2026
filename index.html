@@ -182,11 +182,99 @@
 
         const canvas = document.getElementById('ltgChart');
         const ctx = canvas.getContext('2d');
-        const gradientFill = ctx.createLinearGradient(0, 0, 0, canvas.parentElement.clientHeight);
-        gradientFill.addColorStop(0, 'rgba(240, 180, 41, 0.25)');
-        gradientFill.addColorStop(1, 'rgba(240, 180, 41, 0.0)');
+        const h = canvas.parentElement.clientHeight;
+        const goldFill = ctx.createLinearGradient(0, 0, 0, h);
+        goldFill.addColorStop(0, 'rgba(240, 180, 41, 0.35)');
+        goldFill.addColorStop(0.6, 'rgba(240, 180, 41, 0.08)');
+        goldFill.addColorStop(1, 'rgba(240, 180, 41, 0.0)');
+        const greyFill = ctx.createLinearGradient(0, 0, 0, h);
+        greyFill.addColorStop(0, 'rgba(107, 116, 153, 0.18)');
+        greyFill.addColorStop(1, 'rgba(107, 116, 153, 0.0)');
 
-        new Chart(ctx, {
+        const lastIndex = arr => {
+            for (let i = arr.length - 1; i >= 0; i--) if (arr[i] !== null) return i;
+            return -1;
+        };
+
+        // Soft glow under the 2026 line.
+        const glowPlugin = {
+            id: 'glow',
+            beforeDatasetDraw(chart, args) {
+                if (args.index !== 1) return;
+                chart.ctx.save();
+                chart.ctx.shadowColor = 'rgba(240, 180, 41, 0.55)';
+                chart.ctx.shadowBlur = 14;
+            },
+            afterDatasetDraw(chart, args) {
+                if (args.index === 1) chart.ctx.restore();
+            },
+        };
+
+        // Pulsing "live" dot on the latest 2026 point + value tags at the end of each line.
+        const endMarkersPlugin = {
+            id: 'endMarkers',
+            afterDatasetsDraw(chart) {
+                const { ctx: c, chartArea } = chart;
+                const tags = [
+                    { ds: 0, bg: '#2a3357', fg: '#c3cbe0', border: 'rgba(140, 155, 180, 0.35)' },
+                    { ds: 1, bg: COLORS.gold, fg: '#111827', border: COLORS.gold },
+                ];
+
+                // Pulse
+                const i26 = lastIndex(chart.data.datasets[1].data);
+                if (i26 > 0 && chart.isDatasetVisible(1)) {
+                    const p = chart.getDatasetMeta(1).data[i26];
+                    const t = (performance.now() % 1800) / 1800;
+                    c.save();
+                    c.beginPath();
+                    c.arc(p.x, p.y, 6 + t * 14, 0, Math.PI * 2);
+                    c.fillStyle = `rgba(240, 180, 41, ${0.45 * (1 - t)})`;
+                    c.fill();
+                    c.beginPath();
+                    c.arc(p.x, p.y, 6, 0, Math.PI * 2);
+                    c.fillStyle = COLORS.gold;
+                    c.strokeStyle = '#111827';
+                    c.lineWidth = 2;
+                    c.fill();
+                    c.stroke();
+                    c.restore();
+                }
+
+                // Tags
+                for (const tag of tags) {
+                    if (!chart.isDatasetVisible(tag.ds)) continue;
+                    const data = chart.data.datasets[tag.ds].data;
+                    const idx = lastIndex(data);
+                    if (idx < 1) continue;
+                    const p = chart.getDatasetMeta(tag.ds).data[idx];
+                    const text = nf.format(data[idx]);
+                    c.save();
+                    c.font = "700 13px 'Inter', sans-serif";
+                    const w = c.measureText(text).width + 22;
+                    const th = 28;
+                    let x = Math.min(Math.max(p.x - w / 2, chartArea.left), chartArea.right - w);
+                    let y = p.y - th - 14;
+                    if (y < chartArea.top) y = p.y + 14;
+                    c.beginPath();
+                    c.roundRect(x, y, w, th, 14);
+                    c.fillStyle = tag.bg;
+                    c.shadowColor = 'rgba(0, 0, 0, 0.35)';
+                    c.shadowBlur = 10;
+                    c.fill();
+                    c.shadowBlur = 0;
+                    c.strokeStyle = tag.border;
+                    c.lineWidth = 1;
+                    c.stroke();
+                    c.fillStyle = tag.fg;
+                    c.textAlign = 'center';
+                    c.textBaseline = 'middle';
+                    c.fillText(text, x + w / 2, y + th / 2 + 1);
+                    c.restore();
+                }
+            },
+        };
+
+        const chart = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: grid.map(dayLabel),
@@ -195,24 +283,28 @@
                         label: '2025',
                         data: data2025,
                         borderColor: COLORS.lastYear,
-                        backgroundColor: COLORS.lastYear,
+                        backgroundColor: greyFill,
                         borderWidth: 2,
-                        fill: false,
+                        fill: true,
                         pointRadius: 0,
                         pointHoverRadius: 5,
-                        tension: 0.3,
+                        pointHoverBackgroundColor: COLORS.lastYear,
+                        tension: 0.35,
                     },
                     {
                         label: '2026',
                         data: data2026,
                         borderColor: COLORS.gold,
-                        backgroundColor: gradientFill,
-                        pointBackgroundColor: COLORS.gold,
+                        backgroundColor: goldFill,
                         borderWidth: 3,
                         fill: true,
-                        pointRadius: 0,
-                        pointHoverRadius: 6,
-                        tension: 0.3,
+                        pointRadius: c => (c.dataIndex > 0 && c.raw !== null ? 3.5 : 0),
+                        pointBackgroundColor: '#111827',
+                        pointBorderColor: COLORS.gold,
+                        pointBorderWidth: 2,
+                        pointHoverRadius: 7,
+                        pointHoverBackgroundColor: COLORS.gold,
+                        tension: 0.35,
                         spanGaps: false,
                     },
                 ],
@@ -220,17 +312,33 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: { padding: { top: 8, right: 12 } },
                 interaction: { mode: 'index', intersect: false },
+                animation: { duration: 1400, easing: 'easeOutQuart' },
                 plugins: {
+                    title: {
+                        display: true,
+                        text: '2025 vs 2026',
+                        color: COLORS.text,
+                        font: { size: 20, weight: 700 },
+                        padding: { top: 6, bottom: 18 },
+                    },
                     legend: {
                         labels: {
                             color: COLORS.legend,
                             usePointStyle: true,
                             pointStyle: 'circle',
-                            boxWidth: 7,
-                            boxHeight: 7,
-                            padding: 24,
-                            font: { size: 13, weight: 500 },
+                            boxWidth: 9,
+                            boxHeight: 9,
+                            padding: 28,
+                            font: { size: 14, weight: 500 },
+                            generateLabels: c => Chart.defaults.plugins.legend.labels.generateLabels(c).map(l => ({
+                                ...l,
+                                fillStyle: l.datasetIndex === 1 ? COLORS.gold : 'transparent',
+                                strokeStyle: l.datasetIndex === 1 ? COLORS.gold : COLORS.lastYear,
+                                lineWidth: 3,
+                                lineDash: [],
+                            })),
                         },
                     },
                     tooltip: {
@@ -250,6 +358,11 @@
                         itemSort: (a, b) => b.datasetIndex - a.datasetIndex,
                         callbacks: {
                             label: c => `${c.dataset.label}: ${nf.format(c.parsed.y)}`,
+                            labelPointStyle: () => ({ pointStyle: 'circle', rotation: 0 }),
+                            labelColor: c => ({
+                                borderColor: c.datasetIndex === 1 ? COLORS.gold : COLORS.lastYear,
+                                backgroundColor: c.datasetIndex === 1 ? COLORS.gold : COLORS.lastYear,
+                            }),
                         },
                     },
                 },
@@ -261,7 +374,7 @@
                     },
                     y: {
                         beginAtZero: true,
-                        suggestedMax: Math.max(CAMPAIGN_2026.goal, total2025) * 1.05,
+                        suggestedMax: Math.max(CAMPAIGN_2026.goal, total2025) * 1.08,
                         grid: { color: COLORS.grid },
                         border: { display: false },
                         ticks: {
@@ -272,7 +385,14 @@
                     },
                 },
             },
+            plugins: [glowPlugin, endMarkersPlugin],
         });
+
+        // Keep the live dot pulsing.
+        (function pulse() {
+            chart.draw();
+            requestAnimationFrame(pulse);
+        })();
     }
 
     async function init() {
