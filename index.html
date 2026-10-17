@@ -161,6 +161,23 @@
         });
         const total2026 = cum;
 
+        // Per-week amounts on the shared grid (difference between consecutive totals).
+        // For 2025 this is the same 7-day window last year.
+        const toWeekly = arr => arr.map((v, i) => {
+            if (v === null) return null;
+            const prev = i > 0 ? arr[i - 1] : null;
+            return prev === null ? null : v - prev;
+        });
+        const weekly2025Grid = toWeekly(data2025);
+        const weekly2026Grid = toWeekly(data2026);
+
+        const tooltipTitle = i => {
+            const x = grid[i];
+            const range = `${dayLabel(x - 6)} – ${dayLabel(x)}`;
+            const w = (x - start26) / 7;
+            return w >= 1 ? `Week ${w}  ·  ${range}` : range;
+        };
+
         // Stats
         document.getElementById('done2025').textContent = nf.format(total2025);
         const done = document.getElementById('done2026');
@@ -355,9 +372,15 @@
                         titleMarginBottom: 12,
                         boxPadding: 8,
                         usePointStyle: true,
+                        filter: c => c.parsed.y !== null && !Number.isNaN(c.parsed.y),
                         itemSort: (a, b) => b.datasetIndex - a.datasetIndex,
                         callbacks: {
-                            label: c => `${c.dataset.label}: ${nf.format(c.parsed.y)}`,
+                            title: items => (items.length ? tooltipTitle(items[0].dataIndex) : ''),
+                            label: c => {
+                                const wk = (c.datasetIndex === 1 ? weekly2026Grid : weekly2025Grid)[c.dataIndex];
+                                const week = wk === null ? '' : `${nf.format(wk)} this week  ·  `;
+                                return `${c.dataset.label}:  ${week}${nf.format(c.parsed.y)} total`;
+                            },
                             labelPointStyle: () => ({ pointStyle: 'circle', rotation: 0 }),
                             labelColor: c => ({
                                 borderColor: c.datasetIndex === 1 ? COLORS.gold : COLORS.lastYear,
