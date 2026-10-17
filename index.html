@@ -11,7 +11,8 @@
 <body>
 
 <div class="header">
-    <h1><span class="text-gradient">Live To Give</span> <span class="text-solid">2025 vs 2026</span></h1>
+    <div class="header-org">ISKCON London</div>
+    <h1><span class="text-gradient">Live to Give</span> <span class="text-solid">Campaign</span></h1>
 </div>
 
 <div class="dashboard">
@@ -20,24 +21,30 @@
     </div>
 
     <div class="stats-grid">
-        <div class="stat-panel">
-            <div class="stat-year">2025</div>
-            <div class="stat-row"><span>Goal</span><strong>28,000</strong></div>
-            <div class="stat-row"><span>Achieved</span><strong id="done2025">–</strong></div>
+        <div class="stat-col">
+            <div class="stat-panel">
+                <div class="stat-year">2025</div>
+                <div class="stat-row"><span>Goal</span><strong>28,000</strong></div>
+                <div class="stat-row"><span>Achieved</span><strong id="done2025">–</strong></div>
+                <div class="progress-block">
+                    <div class="progress-label"><span>Progress</span><strong class="accent-green">Completed</strong></div>
+                    <div class="progress"><div style="width: 100%"></div></div>
+                </div>
+            </div>
+            <div class="start-note">Campaign started <strong>Sep 8, 2025</strong></div>
         </div>
-        <div class="stat-panel">
-            <div class="stat-year">2026</div>
-            <div class="stat-row"><span>Goal</span><strong>31,000</strong></div>
-            <div class="stat-row"><span>Done so far</span><strong id="done2026" class="loading">Loading...</strong></div>
-            <div class="progress"><div id="progress2026"></div></div>
-            <div class="stat-row"><span>Progress</span><strong id="pct2026" class="accent-green">–</strong></div>
+        <div class="stat-col">
+            <div class="stat-panel">
+                <div class="stat-year">2026</div>
+                <div class="stat-row"><span>Goal</span><strong>31,000</strong></div>
+                <div class="stat-row"><span>Done so far</span><strong id="done2026" class="loading">Loading...</strong></div>
+                <div class="progress-block">
+                    <div class="progress-label"><span>Progress</span><strong id="pct2026" class="accent-green">–</strong></div>
+                    <div class="progress"><div id="progress2026"></div></div>
+                </div>
+            </div>
+            <div class="start-note">Campaign started <strong>Sep 27, 2026</strong></div>
         </div>
-    </div>
-
-    <div class="footer-note">
-        2025 campaign started <strong>Sep 8, 2025</strong>
-        <span class="dot">•</span>
-        2026 campaign started <strong>Sep 27, 2026</strong>
     </div>
 </div>
 
@@ -176,9 +183,20 @@
                 plugins: {
                     legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } },
                     tooltip: {
-                        backgroundColor: '#111827',
-                        borderColor: 'rgba(240, 180, 41, 0.3)',
+                        backgroundColor: 'rgba(17, 24, 39, 0.96)',
+                        borderColor: 'rgba(240, 180, 41, 0.5)',
                         borderWidth: 1,
+                        padding: 16,
+                        cornerRadius: 10,
+                        caretSize: 8,
+                        titleColor: '#f4f6ff',
+                        titleFont: { size: 16, weight: '700' },
+                        titleMarginBottom: 10,
+                        bodyColor: '#f4f6ff',
+                        bodyFont: { size: 15 },
+                        bodySpacing: 8,
+                        boxPadding: 6,
+                        displayColors: false,
                         filter: item => item.raw.week > 0,
                         callbacks: {
                             title: items => {
