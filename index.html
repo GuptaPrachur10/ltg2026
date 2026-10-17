@@ -4,131 +4,84 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LTG Campaign Dashboard</title>
-    <!-- Import Chart.js (pinned so a new major release can't break the page) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; color: #333; padding: 20px; }
-        .container { max-width: 1100px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        h1 { text-align: center; color: #2c3e50; margin-bottom: 4px; }
-        .subtitle { text-align: center; color: #7f8c8d; margin-top: 0; font-size: 14px; }
-        .chart-wrap { position: relative; height: 460px; margin-top: 20px; }
-        .stats-grid { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; margin-top: 30px; }
-        .stat-box { flex: 1 1 260px; text-align: center; padding: 20px; background: #ecf0f1; border-radius: 8px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); }
-        .stat-box h3 { margin: 0; font-size: 16px; color: #2c3e50; text-transform: uppercase; letter-spacing: 1px; }
-        .stat-box .big { margin: 12px 0 6px; font-size: 34px; font-weight: bold; color: #2980b9; }
-        .stat-box .sub { font-size: 13px; color: #555; line-height: 1.6; }
-        .stat-box.y2025 .big { color: #7f8c8d; }
-        .stat-box.y2026 .big { color: #27ae60; }
-        .progress { height: 10px; background: #d5dbdb; border-radius: 5px; overflow: hidden; margin: 8px 0 4px; }
-        .progress > div { height: 100%; background: #2ecc71; width: 0; transition: width 0.6s; }
-        .pos { color: #27ae60; font-weight: bold; }
-        .neg { color: #c0392b; font-weight: bold; }
-        .error { color: #c0392b; text-align: center; font-size: 14px; }
-        .info-section { margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 14px; color: #7f8c8d; text-align: center; line-height: 1.6; }
-    </style>
 </head>
 <body>
 
-<div class="container">
-    <h1>Live To Give (LTG) Campaign Dashboard</h1>
-    <p class="subtitle">Running total of Bhagavad Gitas distributed. The x-axis is the calendar date, so the same time of year
-        (e.g. December) lines up across both campaigns even though they started on different days.</p>
+<div class="header">
+    <h1><span class="text-gradient">Live To Give</span> <span class="text-solid">2025 vs 2026</span></h1>
+</div>
 
-    <!-- Chart Container -->
-    <div class="chart-wrap"><canvas id="ltgChart"></canvas></div>
-    <p id="errorMsg" class="error"></p>
+<div class="dashboard">
+    <div class="chart-panel">
+        <div class="chart-container"><canvas id="ltgChart"></canvas></div>
+    </div>
 
-    <!-- Statistics Boxes -->
     <div class="stats-grid">
-        <div class="stat-box y2025">
-            <h3>2025 Final Total</h3>
-            <div class="big" id="total2025">–</div>
-            <div class="sub" id="sub2025"></div>
+        <div class="stat-panel">
+            <div class="stat-year">2025</div>
+            <div class="stat-row"><span>Goal</span><strong>28,000</strong></div>
+            <div class="stat-row"><span>Achieved</span><strong id="done2025">–</strong></div>
         </div>
-        <div class="stat-box y2026">
-            <h3>2026 Current Total</h3>
-            <div class="big" id="currentTotal">Loading...</div>
+        <div class="stat-panel">
+            <div class="stat-year">2026</div>
+            <div class="stat-row"><span>Goal</span><strong>31,000</strong></div>
+            <div class="stat-row"><span>Done so far</span><strong id="done2026" class="loading">Loading...</strong></div>
             <div class="progress"><div id="progress2026"></div></div>
-            <div class="sub" id="sub2026"></div>
-        </div>
-        <div class="stat-box">
-            <h3>Pace Check</h3>
-            <div class="big" id="paceDelta">–</div>
-            <div class="sub" id="paceSub"></div>
+            <div class="stat-row"><span>Progress</span><strong id="pct2026" class="accent-green">–</strong></div>
         </div>
     </div>
 
-    <!-- Campaign Dates Information -->
-    <div class="info-section">
-        <p><strong>Campaign Dates:</strong> The 2025 campaign ran from September 8, 2025, to January 7, 2026 (18 weeks).<br>
-        The current 2026 campaign started on September 27, 2026.<br>
-        Each point marks the end of a campaign week; dashed segments are weeks still in progress.
-        The dotted "target path" shows where 2026 would need to be to hit its goal if it follows the same calendar pattern as 2025.</p>
+    <div class="footer-note">
+        2025 campaign started <strong>Sep 8, 2025</strong>
+        <span class="dot">•</span>
+        2026 campaign started <strong>Sep 27, 2026</strong>
     </div>
 </div>
 
 <script>
-    // ---------------------------------------------------------------------
-    // Campaign configuration
-    // ---------------------------------------------------------------------
     const CAMPAIGN_2025 = {
-        label: '2025 Campaign',
         start: '2025-09-08',
-        end: '2026-01-07',          // last week is partial (Jan 5–7)
+        end: '2026-01-07',
         goal: 28000,
-        // Static 2025 Data (Full 18 weeks)
         weekly: [961, 674, 532, 695, 1749, 947, 700, 796, 603, 212, 898, 1730, 8237, 4720, 105, 6609, 289, 131],
     };
     const CAMPAIGN_2026 = {
-        label: '2026 Campaign',
         start: '2026-09-27',
-        end: null,                  // derived from the number of weeks returned by the API
+        end: null,
         goal: 31000,
     };
 
-    const COLORS = {
-        c2025: '#95a5a6',
-        c2026: '#2ecc71',
-        goal2025: '#7f8c8d',
-        goal2026: '#27ae60',
-        target: '#f39c12',
-    };
-
-    // ---------------------------------------------------------------------
-    // Date helpers. Everything is done in UTC "days" to avoid DST surprises.
-    // The x-axis value is "days since September 1 of the campaign's start
-    // year", so Dec 1, 2025 and Dec 1, 2026 land on the same x position.
-    // ---------------------------------------------------------------------
+    // x value = days since Sep 1 of the campaign's start year,
+    // so the same calendar date lines up across both years.
     const DAY_MS = 24 * 60 * 60 * 1000;
-    const AXIS_LABEL_YEAR = 2026;   // year used only for formatting axis labels
+    const LABEL_YEAR = 2026;
 
     function parseUTC(s) {
         const [y, m, d] = s.split('-').map(Number);
         return Date.UTC(y, m - 1, d);
     }
-    function seasonDay(ms, seasonYear) {
-        return Math.round((ms - Date.UTC(seasonYear, 8, 1)) / DAY_MS);
+    function seasonDay(ms, year) {
+        return Math.round((ms - Date.UTC(year, 8, 1)) / DAY_MS);
     }
     function fmtAxis(x) {
-        return new Date(Date.UTC(AXIS_LABEL_YEAR, 8, 1) + x * DAY_MS)
+        return new Date(Date.UTC(LABEL_YEAR, 8, 1) + x * DAY_MS)
             .toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
     }
-    function fmtDate(ms, withYear) {
-        const opts = { month: 'short', day: 'numeric', timeZone: 'UTC' };
-        if (withYear) opts.year = 'numeric';
-        return new Date(ms).toLocaleDateString('en-US', opts);
+    function fmtDate(ms) {
+        return new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
     }
     function todayUTC() {
         const n = new Date();
         return Date.UTC(n.getFullYear(), n.getMonth(), n.getDate());
     }
     const fmtNum = n => Math.round(n).toLocaleString('en-US');
-    const fmtSigned = n => (n >= 0 ? '+' : '−') + fmtNum(Math.abs(n));
 
-    // Builds cumulative points: one at the campaign start (0) and one at the
-    // end of each reported week. Weeks that haven't finished yet are plotted
-    // at today's date and flagged as in progress.
-    function buildCumulative(campaign, weekly, todayMs) {
+    // One point at campaign start (0), then one at the end of each reported week.
+    function buildSeries(campaign, weekly) {
+        const today = todayUTC();
         const startMs = parseUTC(campaign.start);
         const endMs = campaign.end ? parseUTC(campaign.end) : Infinity;
         const yr = new Date(startMs).getUTCFullYear();
@@ -138,231 +91,102 @@
             const v = weekly[i];
             if (v === null || v === undefined || v === '') break;
             const weekStart = startMs + 7 * i * DAY_MS;
-            const lastDay = Math.min(weekStart + 6 * DAY_MS, endMs);
-            const inProgress = todayMs < lastDay;
-            const shownLastDay = inProgress ? Math.max(weekStart, todayMs) : lastDay;
+            const lastDay = Math.min(weekStart + 6 * DAY_MS, endMs, Math.max(weekStart, today));
             cum += Number(v);
-            pts.push({
-                x: seasonDay(shownLastDay, yr) + 1,   // end of that day
-                y: cum,
-                week: i + 1,
-                weekly: Number(v),
-                weekStart,
-                lastDay,
-                inProgress,
-            });
+            pts.push({ x: seasonDay(lastDay, yr) + 1, y: cum, week: i + 1, weekly: Number(v), weekStart, lastDay });
         }
         return pts;
     }
 
-    // Linear interpolation of a cumulative series at x.
-    function valueAt(pts, x) {
-        if (!pts.length || x <= pts[0].x) return 0;
-        for (let i = 1; i < pts.length; i++) {
-            if (x <= pts[i].x) {
-                const a = pts[i - 1], b = pts[i];
-                return a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x);
-            }
-        }
-        return pts[pts.length - 1].y;
-    }
-
-    // Tick marks on the 1st and 15th of every month in range.
     function monthTicks(min, max) {
         const ticks = [];
-        for (let m = 8; m <= 8 + 7; m++) {
+        for (let m = 8; m <= 15; m++) {
             for (const d of [1, 15]) {
-                const x = seasonDay(Date.UTC(AXIS_LABEL_YEAR, m, d), AXIS_LABEL_YEAR);
-                if (x >= min && x <= max) ticks.push({ value: x, major: d === 1 });
+                const x = seasonDay(Date.UTC(LABEL_YEAR, m, d), LABEL_YEAR);
+                if (x >= min && x <= max) ticks.push({ value: x });
             }
         }
         return ticks;
     }
 
-    // Small inline plugin: vertical "Today" marker + labels on goal lines.
-    const annotationsPlugin = {
-        id: 'ltgAnnotations',
-        afterDatasetsDraw(chart, _args, opts) {
-            const { ctx, chartArea, scales } = chart;
-            ctx.save();
-            // Today line
-            if (opts.todayX !== undefined && opts.todayX >= scales.x.min && opts.todayX <= scales.x.max) {
-                const px = scales.x.getPixelForValue(opts.todayX);
-                ctx.strokeStyle = '#e74c3c';
-                ctx.setLineDash([4, 4]);
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                ctx.moveTo(px, chartArea.top);
-                ctx.lineTo(px, chartArea.bottom);
-                ctx.stroke();
-                ctx.setLineDash([]);
-                ctx.fillStyle = '#e74c3c';
-                ctx.font = 'bold 11px Segoe UI, sans-serif';
-                ctx.textAlign = 'left';
-                ctx.fillText('Today', px + 4, chartArea.top + 12);
-            }
-            // Goal labels
-            ctx.font = 'bold 12px Segoe UI, sans-serif';
-            ctx.textAlign = 'right';
-            for (const g of opts.goals || []) {
-                const py = scales.y.getPixelForValue(g.value);
-                ctx.fillStyle = g.color;
-                ctx.fillText(g.text, chartArea.right - 4, py + (g.below ? 14 : -5));
-            }
-            ctx.restore();
-        },
-    };
+    function render(weekly2026) {
+        const css = getComputedStyle(document.documentElement);
+        const gold = css.getPropertyValue('--accent-gold').trim();
+        const muted = css.getPropertyValue('--text-muted').trim();
+        const grid = 'rgba(140, 155, 180, 0.12)';
 
-    // ---------------------------------------------------------------------
-    // Rendering
-    // ---------------------------------------------------------------------
-    function render(weekly2026, errorText) {
-        const today = todayUTC();
-        const pts2025 = buildCumulative(CAMPAIGN_2025, CAMPAIGN_2025.weekly, today);
-        const final2025 = pts2025[pts2025.length - 1].y;
-        const pts2026 = weekly2026 ? buildCumulative(CAMPAIGN_2026, weekly2026, today) : [];
-        const current2026 = pts2026.length ? pts2026[pts2026.length - 1].y : 0;
+        const pts2025 = buildSeries(CAMPAIGN_2025, CAMPAIGN_2025.weekly);
+        const pts2026 = weekly2026 ? buildSeries(CAMPAIGN_2026, weekly2026) : [];
+        const total2025 = pts2025[pts2025.length - 1].y;
+        const total2026 = pts2026.length ? pts2026[pts2026.length - 1].y : 0;
 
-        // 2026 target path: 2025's calendar-date pattern scaled to the 2026 goal.
-        const targetPath = pts2025.map(p => ({ x: p.x, y: p.y / final2025 * CAMPAIGN_2026.goal }));
+        // Stats
+        document.getElementById('done2025').innerText = fmtNum(total2025);
+        const done = document.getElementById('done2026');
+        done.classList.remove('loading');
+        if (weekly2026) {
+            const pct = total2026 / CAMPAIGN_2026.goal * 100;
+            done.innerText = fmtNum(total2026);
+            document.getElementById('pct2026').innerText = pct.toFixed(1) + '%';
+            document.getElementById('progress2026').style.width = Math.min(pct, 100) + '%';
+        } else {
+            done.innerText = 'Error';
+        }
 
-        // Planned 2026 end (from number of weeks the API exposes).
-        const start2026 = parseUTC(CAMPAIGN_2026.start);
-        const end2026X = weekly2026 ? seasonDay(start2026 + 7 * weekly2026.length * DAY_MS, 2026) : 0;
-
+        // Axis range covers both campaigns, including the full planned 2026 span.
+        const end2026X = weekly2026
+            ? seasonDay(parseUTC(CAMPAIGN_2026.start) + 7 * weekly2026.length * DAY_MS, 2026) : 0;
         const allX = [...pts2025, ...pts2026].map(p => p.x).concat(end2026X);
         const minX = Math.min(...allX) - 7;
         const maxX = Math.max(...allX) + 7;
-        const todayX = seasonDay(today, 2026) + 1;
 
-        const goalLine = v => [{ x: minX, y: v }, { x: maxX, y: v }];
+        Chart.defaults.font.family = 'Inter, sans-serif';
+        Chart.defaults.color = muted;
 
-        // --- Stats boxes ---
-        document.getElementById('total2025').innerText = fmtNum(final2025);
-        const pct2025 = final2025 / CAMPAIGN_2025.goal * 100;
-        document.getElementById('sub2025').innerHTML =
-            `Goal ${fmtNum(CAMPAIGN_2025.goal)} · <span class="${pct2025 >= 100 ? 'pos' : 'neg'}">${pct2025.toFixed(0)}% of goal</span>`;
-
-        if (weekly2026) {
-            const pct2026 = current2026 / CAMPAIGN_2026.goal * 100;
-            document.getElementById('currentTotal').innerText = fmtNum(current2026);
-            document.getElementById('progress2026').style.width = Math.min(pct2026, 100) + '%';
-            document.getElementById('sub2026').innerHTML =
-                `${pct2026.toFixed(1)}% of ${fmtNum(CAMPAIGN_2026.goal)} goal · ` +
-                `${fmtNum(Math.max(CAMPAIGN_2026.goal - current2026, 0))} to go`;
-
-            // Compare at the date the 2026 data runs through.
-            const last = pts2026[pts2026.length - 1];
-            const compareX = last.x;
-            const sameDate2025 = valueAt(pts2025, compareX);
-            const targetNow = valueAt(targetPath, compareX);
-            const deltaTarget = current2026 - targetNow;
-            const deltaLastYear = current2026 - sameDate2025;
-            const pd = document.getElementById('paceDelta');
-            pd.innerText = fmtSigned(deltaTarget);
-            pd.className = 'big ' + (deltaTarget >= 0 ? 'pos' : 'neg');
-            document.getElementById('paceSub').innerHTML =
-                `vs. target path through ${fmtAxis(compareX - 1)} (${fmtNum(targetNow)})<br>` +
-                `vs. 2025 on the same date (${fmtNum(sameDate2025)}): ` +
-                `<span class="${deltaLastYear >= 0 ? 'pos' : 'neg'}">${fmtSigned(deltaLastYear)}</span>`;
-        } else {
-            document.getElementById('currentTotal').innerText = 'Error';
-        }
-        document.getElementById('errorMsg').innerText = errorText || '';
-
-        // --- Chart ---
-        const ctx = document.getElementById('ltgChart').getContext('2d');
-        new Chart(ctx, {
+        new Chart(document.getElementById('ltgChart'), {
             type: 'line',
             data: {
                 datasets: [
                     {
-                        label: '2026 Campaign (Live)',
+                        label: '2026',
                         data: pts2026,
-                        borderColor: COLORS.c2026,
-                        backgroundColor: 'rgba(46, 204, 113, 0.12)',
+                        borderColor: gold,
+                        backgroundColor: 'rgba(240, 180, 41, 0.12)',
                         borderWidth: 3,
                         fill: 'origin',
-                        tension: 0,
                         pointRadius: 4,
-                        pointBackgroundColor: COLORS.c2026,
-                        segment: { borderDash: c => (c.p1.raw && c.p1.raw.inProgress ? [6, 4] : undefined) },
-                        order: 1,
+                        pointBackgroundColor: gold,
                     },
                     {
-                        label: '2025 Campaign',
+                        label: '2025',
                         data: pts2025,
-                        borderColor: COLORS.c2025,
-                        backgroundColor: COLORS.c2025,
+                        borderColor: muted,
+                        backgroundColor: muted,
                         borderWidth: 2,
-                        borderDash: [5, 5],
+                        borderDash: [6, 5],
                         fill: false,
-                        tension: 0,
                         pointRadius: 3,
-                        order: 2,
-                    },
-                    {
-                        label: `2026 target path (2025 pattern → ${fmtNum(CAMPAIGN_2026.goal)})`,
-                        data: targetPath,
-                        borderColor: COLORS.target,
-                        borderWidth: 1.5,
-                        borderDash: [2, 3],
-                        fill: false,
-                        tension: 0,
-                        pointRadius: 0,
-                        order: 3,
-                    },
-                    {
-                        label: `2026 Goal (${fmtNum(CAMPAIGN_2026.goal)})`,
-                        data: goalLine(CAMPAIGN_2026.goal),
-                        borderColor: COLORS.goal2026,
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        isGoal: true,
-                        order: 4,
-                    },
-                    {
-                        label: `2025 Goal (${fmtNum(CAMPAIGN_2025.goal)})`,
-                        data: goalLine(CAMPAIGN_2025.goal),
-                        borderColor: COLORS.goal2025,
-                        borderWidth: 1.5,
-                        borderDash: [8, 4],
-                        pointRadius: 0,
-                        isGoal: true,
-                        order: 5,
                     },
                 ],
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                interaction: { mode: 'nearest', axis: 'xy', intersect: false },
+                interaction: { mode: 'nearest', intersect: false },
                 plugins: {
-                    legend: { position: 'top' },
+                    legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } },
                     tooltip: {
-                        filter: item => !item.dataset.isGoal && item.raw.week !== undefined,
+                        backgroundColor: '#111827',
+                        borderColor: 'rgba(240, 180, 41, 0.3)',
+                        borderWidth: 1,
+                        filter: item => item.raw.week > 0,
                         callbacks: {
                             title: items => {
                                 const r = items[0].raw;
-                                if (!r.week) return `${items[0].dataset.label} start`;
-                                const shownEnd = r.inProgress ? today : r.lastDay;
-                                return `${items[0].dataset.label} · Week ${r.week}` +
-                                    ` (${fmtDate(r.weekStart)} – ${fmtDate(shownEnd, true)}${r.inProgress ? ', in progress' : ''})`;
+                                return `${items[0].dataset.label} · Week ${r.week} (${fmtDate(r.weekStart)} – ${fmtDate(r.lastDay)})`;
                             },
-                            label: item => {
-                                const r = item.raw;
-                                const lines = [`Running total: ${fmtNum(r.y)}`];
-                                if (r.week) lines.push(`This week: ${fmtNum(r.weekly)}`);
-                                return lines;
-                            },
+                            label: item => [`Week: ${fmtNum(item.raw.weekly)}`, `Total: ${fmtNum(item.raw.y)}`],
                         },
-                    },
-                    ltgAnnotations: {
-                        todayX,
-                        goals: [
-                            { value: CAMPAIGN_2026.goal, text: `2026 goal: ${fmtNum(CAMPAIGN_2026.goal)}`, color: COLORS.goal2026 },
-                            { value: CAMPAIGN_2025.goal, text: `2025 goal: ${fmtNum(CAMPAIGN_2025.goal)}`, color: COLORS.goal2025, below: true },
-                        ],
                     },
                 },
                 scales: {
@@ -372,52 +196,34 @@
                         max: maxX,
                         afterBuildTicks: axis => { axis.ticks = monthTicks(axis.min, axis.max); },
                         ticks: { callback: v => fmtAxis(v), autoSkip: false, maxRotation: 0 },
-                        grid: { color: c => (c.tick && c.tick.major ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.05)') },
-                        title: { display: true, text: 'Calendar date (Sep → Jan)' },
+                        grid: { color: grid },
                     },
                     y: {
                         beginAtZero: true,
-                        suggestedMax: Math.max(CAMPAIGN_2026.goal, final2025) * 1.08,
+                        suggestedMax: Math.max(CAMPAIGN_2026.goal, total2025) * 1.05,
                         ticks: { callback: v => fmtNum(v) },
-                        title: { display: true, text: 'Bhagavad Gitas Distributed (running total)' },
+                        grid: { color: grid },
                     },
                 },
             },
-            plugins: [annotationsPlugin],
         });
     }
 
-    async function fetchAndRenderData() {
+    async function init() {
         let weekly2026 = null;
-        let errorText = '';
         try {
-            // 1. Fetch the Google Apps Script URL from config.json
-            const configResponse = await fetch('config.json');
-            if (!configResponse.ok) throw new Error('Could not load config.json');
-            const config = await configResponse.json();
-            const scriptUrl = config.GOOGLE_APP_SCRIPT_URL;
-
-            if (!scriptUrl || scriptUrl === 'YOUR_WEB_APP_URL_HERE') {
-                throw new Error('Please add your Web App URL to config.json');
-            }
-
-            // 2. Fetch the dynamic 2026 data from the API
-            const response = await fetch(scriptUrl);
+            const config = await (await fetch('config.json')).json();
+            const response = await fetch(config.GOOGLE_APP_SCRIPT_URL);
             if (!response.ok) throw new Error('Could not fetch data from Google Apps Script');
             const payload = await response.json();
-
-            // Extract the 'total' values (null = week not reported yet).
             weekly2026 = payload.weeks.map(w => w.total);
         } catch (error) {
             console.error('Dashboard Error:', error);
-            // Still show 2025 and the goals even if live data is unavailable.
-            errorText = `Live 2026 data unavailable: ${error.message}`;
         }
-        render(weekly2026, errorText);
+        render(weekly2026);
     }
 
-    // Initialize the dashboard
-    fetchAndRenderData();
+    init();
 </script>
 
 </body>
