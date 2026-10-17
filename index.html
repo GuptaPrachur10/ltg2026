@@ -8,56 +8,75 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; color: #333; padding: 20px; }
-        .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         h1 { text-align: center; color: #2c3e50; }
         .stats-grid { display: flex; justify-content: space-around; margin-top: 30px; }
-        .stat-box { text-align: center; padding: 20px; background: #ecf0f1; border-radius: 8px; width: 40%; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);}
-        .stat-box h3 { margin: 0; font-size: 16px; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px;}
-        .stat-box p { margin: 10px 0 0; font-size: 32px; font-weight: bold; color: #2980b9; }
+        .stat-box { text-align: center; padding: 20px; background: #ecf0f1; border-radius: 8px; width: 45%; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);}
+        .stat-box h3 { margin: 0; font-size: 18px; color: #2c3e50; text-transform: uppercase; letter-spacing: 1px;}
+        .stat-box p { margin: 15px 0 0; font-size: 36px; font-weight: bold; color: #2980b9; }
+        .info-section { margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 14px; color: #7f8c8d; text-align: center; line-height: 1.6; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>Live To Give (LTG) Campaign Dashboard</h1>
-    <canvas id="ltgChart" width="400" height="200"></canvas>
     
+    <!-- Chart Container -->
+    <canvas id="ltgChart" width="400" height="180"></canvas>
+    
+    <!-- Statistics Boxes -->
     <div class="stats-grid">
         <div class="stat-box">
-            <h3>2025 Final Total (14 Weeks)</h3>
-            <!-- Summing the first 14 weeks of 2025 to match the 2026 duration -->
-            <p>23,548</p> 
+            <h3>2025 Final Total</h3>
+            <p>30,588</p> 
         </div>
         <div class="stat-box">
-            <h3>2026 Total (Current)</h3>
+            <h3>2026 Current Total</h3>
             <p id="currentTotal">Loading...</p>
         </div>
+    </div>
+
+    <!-- Campaign Dates Information -->
+    <div class="info-section">
+        <p><strong>Campaign Dates:</strong> The 2025 campaign ran from September 8, 2025, to January 7, 2026 (18 weeks).<br>
+        The current 2026 campaign started on September 27, 2026.</p>
     </div>
 </div>
 
 <script>
-    // 1. Static 2025 Data (First 14 weeks only, for 1:1 comparison)
-    const data2025 = [961, 674, 532, 695, 1749, 947, 700, 796, 603, 212, 898, 1730, 8237, 4720]; 
-
-    // REPLACE THIS URL WITH YOUR DEPLOYED GOOGLE APPS SCRIPT WEB APP URL
-    const GOOGLE_APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx3off8LVRKqeFievUltLr5XLjpjjl6g_KcowqtTLZuxnmt3dS4AfuvCebXx9c0FySg2g/exec";
+    // Static 2025 Data (Full 18 weeks)
+    const data2025 = [961, 674, 532, 695, 1749, 947, 700, 796, 603, 212, 898, 1730, 8237, 4720, 105, 6609, 289, 131]; 
 
     async function fetchAndRenderData() {
         try {
-            // 2. Fetch the dynamic 2026 data from the Google Apps Script API
-            const response = await fetch(GOOGLE_APP_SCRIPT_URL);
+            // 1. Fetch the Google Apps Script URL from config.json
+            const configResponse = await fetch('config.json');
+            if (!configResponse.ok) throw new Error("Could not load config.json");
+            const config = await configResponse.json();
+            const scriptUrl = config.GOOGLE_APP_SCRIPT_URL;
+
+            if (!scriptUrl || scriptUrl === "YOUR_WEB_APP_URL_HERE") {
+                document.getElementById('currentTotal').innerText = "Config Error";
+                console.error("Please add your Web App URL to config.json");
+                return;
+            }
+
+            // 2. Fetch the dynamic 2026 data from the API
+            const response = await fetch(scriptUrl);
+            if (!response.ok) throw new Error("Could not fetch data from Google Apps Script");
             const data2026Payload = await response.json();
             
-            // Extract the 'total' values. Empty future weeks will be 'null', which stops the line from dropping to 0
+            // Extract the 'total' values. 
             const data2026 = data2026Payload.weeks.map(w => w.total);
             
             // Calculate running total for the dashboard box
             const currentTotal = data2026.reduce((sum, val) => sum + (val || 0), 0);
             document.getElementById('currentTotal').innerText = currentTotal.toLocaleString();
 
-            // 3. Render the Chart using Chart.js
+            // 3. Render the Chart using Chart.js (Force X-Axis to 18 weeks)
             const ctx = document.getElementById('ltgChart').getContext('2d');
-            const labels = Array.from({length: 14}, (_, i) => `Week ${i + 1}`);
+            const labels = Array.from({length: 18}, (_, i) => `Week ${i + 1}`);
 
             new Chart(ctx, {
                 type: 'line',
@@ -72,7 +91,7 @@
                             borderWidth: 3,
                             fill: true,
                             tension: 0.4,
-                            spanGaps: false // Keeps the line from drawing into the future
+                            spanGaps: false // Keeps the line from drawing past available data
                         },
                         {
                             label: '2025 Campaign (Static)',
@@ -89,7 +108,10 @@
                     responsive: true,
                     plugins: {
                         legend: { position: 'top' },
-                        title: { display: false }
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
                     },
                     scales: {
                         y: { 
@@ -100,7 +122,7 @@
                 }
             });
         } catch (error) {
-            console.error("Error fetching 2026 data:", error);
+            console.error("Dashboard Error:", error);
             document.getElementById('currentTotal').innerText = "Error";
         }
     }
