@@ -178,6 +178,22 @@ body {
     font-weight: 600;
 }
 
+/* 2026 side note on how Gitas are counted */
+.count-note {
+    text-align: center;
+    font-size: 12px;
+    font-style: italic;
+    color: var(--text-muted);
+    letter-spacing: 0.2px;
+    margin-top: -6px;
+}
+
+.count-note strong {
+    color: var(--accent-gold);
+    font-weight: 600;
+    font-style: normal;
+}
+
 .loading {
     color: var(--accent-gold);
     animation: pulse 1.5s infinite;
