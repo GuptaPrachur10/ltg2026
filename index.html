@@ -58,7 +58,7 @@
                 <div class="progress"><div id="progress2026"></div></div>
             </div>
             <div class="start-note">Started <strong>27 Sep 2026</strong></div>
-            <div class="count-note">Counting: Bhagavad Gita (Medium) = <strong>1.5</strong> · Bhagavad Gita (Premium) = <strong>3</strong> · other Gitas = 1</div>
+            <div class="start-note">Medium Gita counts <strong>1.5</strong> · Premium <strong>3</strong></div>
         </div>
     </section>
 </main>
@@ -128,7 +128,7 @@
         return pts[pts.length - 1].y;
     }
 
-    function render(weekly2026) {
+    function render(weekly2026, breakdown2026) {
         const c25 = curve2025();
         const total2025 = c25[c25.length - 1].y;
         const weeks = weekly2026 || [];
@@ -177,6 +177,16 @@
             const range = `${dayLabel(x - 6)} – ${dayLabel(x)}`;
             const w = (x - start26) / 7;
             return w >= 1 ? `Week ${w}  ·  ${range}` : range;
+        };
+
+        // 2026 only: per-type Gita counts (raw books) for the hovered week.
+        const GITA_TYPES = ['Small', 'Medium', 'Premium', 'Indian', 'Arabic'];
+        const breakdownLines = i => {
+            const w = (grid[i] - start26) / 7 - 1;
+            const b = breakdown2026 && breakdown2026[w];
+            if (!b) return [];
+            const types = GITA_TYPES.concat(Object.keys(b).filter(t => !GITA_TYPES.includes(t)));
+            return types.filter(t => b[t]).map(t => `      ${t}: ${nf.format(b[t])}`);
         };
 
         // Stats
@@ -382,6 +392,7 @@
                                 const week = wk === null ? '' : `${nf.format(wk)} this week  ·  `;
                                 return `${c.dataset.label}:  ${week}${nf.format(c.parsed.y)} total`;
                             },
+                            afterLabel: c => (c.datasetIndex === 1 ? breakdownLines(c.dataIndex) : []),
                             labelPointStyle: () => ({ pointStyle: 'circle', rotation: 0 }),
                             labelColor: c => ({
                                 borderColor: c.datasetIndex === 1 ? COLORS.gold : COLORS.lastYear,
@@ -421,6 +432,7 @@
 
     async function init() {
         let weekly2026 = null;
+        let breakdown2026 = null;
         try {
             const config = await (await fetch('config.json')).json();
             if (config.LOGO) {
@@ -432,10 +444,11 @@
             if (!response.ok) throw new Error('Could not fetch data from Google Apps Script');
             const payload = await response.json();
             weekly2026 = payload.weeks.map(w => w.total);
+            breakdown2026 = payload.weeks.map(w => w.breakdown || null);
         } catch (error) {
             console.error('Dashboard Error:', error);
         }
-        render(weekly2026);
+        render(weekly2026, breakdown2026);
     }
 
     init();
