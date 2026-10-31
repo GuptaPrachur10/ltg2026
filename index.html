@@ -11,7 +11,7 @@
 <body>
 
 <header class="header">
-    <img class="logo" id="logo" alt="ISKCON London" hidden>
+    <img class="logo" id="logo" src="logo.webp" alt="ISKCON London">
     <h1>Live to Give Campaign</h1>
 </header>
 
@@ -435,11 +435,6 @@
         let breakdown2026 = null;
         try {
             const config = await (await fetch('config.json')).json();
-            if (config.LOGO) {
-                const logo = document.getElementById('logo');
-                logo.src = config.LOGO;
-                logo.hidden = false;
-            }
             const response = await fetch(config.GOOGLE_APP_SCRIPT_URL);
             if (!response.ok) throw new Error('Could not fetch data from Google Apps Script');
             const payload = await response.json();
