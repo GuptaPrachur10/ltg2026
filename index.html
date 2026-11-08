@@ -11,7 +11,7 @@
 <body>
 
 <header class="header">
-    <img class="logo" id="logo" src="logo.webp" alt="ISKCON London">
+    <img class="logo" id="logo" alt="ISKCON London" hidden>
     <h1>Live to Give Campaign</h1>
 </header>
 
@@ -21,23 +21,6 @@
     </section>
 
     <section class="stats-grid">
-        <div class="stat-col">
-            <div class="stat-card">
-                <div class="stat-year muted">2025</div>
-                <div class="kpis">
-                    <div class="kpi">
-                        <div class="kpi-label">Goal</div>
-                        <div class="kpi-value">28,000</div>
-                    </div>
-                    <div class="kpi">
-                        <div class="kpi-label">Achieved</div>
-                        <div class="kpi-value" id="done2025">–</div>
-                    </div>
-                </div>
-            </div>
-            <div class="start-note">Started <strong>8 Sep 2025</strong></div>
-        </div>
-
         <div class="stat-col">
             <div class="stat-card current">
                 <div class="stat-year">2026</div>
@@ -64,12 +47,6 @@
 </main>
 
 <script>
-    const CAMPAIGN_2025 = {
-        start: '2025-09-08',
-        end: '2026-01-07',
-        goal: 28000,
-        weekly: [961, 674, 532, 695, 1749, 947, 700, 796, 603, 212, 898, 1730, 8237, 4720, 105, 6609, 289, 131],
-    };
     const CAMPAIGN_2026 = {
         start: '2026-09-27',
         goal: 31000,
@@ -77,7 +54,6 @@
 
     const COLORS = {
         gold: '#f0b429',
-        lastYear: '#6b7499',
         legend: '#8c9bb4',
         ticks: '#8c9bb4',
         grid: 'rgba(240, 180, 41, 0.08)',
@@ -86,8 +62,7 @@
         text: '#f4f6ff',
     };
 
-    // Dates are compared by calendar position: x = days since 1 Sep of the
-    // campaign's start year, so e.g. 1 Dec 2025 and 1 Dec 2026 share an x.
+    // x = days since 1 Sep 2026.
     const DAY_MS = 24 * 60 * 60 * 1000;
     const nf = new Intl.NumberFormat('en-GB');
 
@@ -104,55 +79,18 @@
             .toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
     }
 
-    // Cumulative 2025 curve at its real week-end positions.
-    function curve2025() {
-        const startMs = parseUTC(CAMPAIGN_2025.start);
-        const endMs = parseUTC(CAMPAIGN_2025.end);
-        const pts = [{ x: seasonDay(startMs, 2025), y: 0 }];
-        let cum = 0;
-        CAMPAIGN_2025.weekly.forEach((v, i) => {
-            const lastDay = Math.min(startMs + (7 * i + 6) * DAY_MS, endMs);
-            cum += v;
-            pts.push({ x: seasonDay(lastDay, 2025) + 1, y: cum });
-        });
-        return pts;
-    }
-    function valueAt(pts, x) {
-        if (x <= pts[0].x) return 0;
-        for (let i = 1; i < pts.length; i++) {
-            if (x <= pts[i].x) {
-                const a = pts[i - 1], b = pts[i];
-                return a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x);
-            }
-        }
-        return pts[pts.length - 1].y;
-    }
-
     function render(weekly2026, breakdown2026) {
-        const c25 = curve2025();
-        const total2025 = c25[c25.length - 1].y;
         const weeks = weekly2026 || [];
 
-        // Shared weekly grid aligned to 2026 week ends, extended back to cover 2025's start
-        // and forward to cover whichever campaign ends later.
+        // Weekly grid: campaign start, then one point per week end.
         const start26 = seasonDay(parseUTC(CAMPAIGN_2026.start), 2026);
-        const last25 = c25[c25.length - 1].x;
         const end26 = start26 + 7 * Math.max(weeks.length, 1);
-        let first = start26;
-        while (first > c25[0].x) first -= 7;
         const grid = [];
-        for (let x = first; x < Math.max(last25, end26) + 7; x += 7) grid.push(x);
+        for (let x = start26; x <= end26; x += 7) grid.push(x);
 
-        // Series on the shared grid.
-        let reached25 = false;
-        const data2025 = grid.map(x => {
-            if (reached25) return null;
-            if (x >= last25) reached25 = true;
-            return Math.round(valueAt(c25, x));
-        });
+        // Cumulative 2026 series.
         let cum = 0, stopped = false;
         const data2026 = grid.map(x => {
-            if (x < start26) return null;
             if (x === start26) return 0;
             const w = (x - start26) / 7 - 1;
             const v = weeks[w];
@@ -162,15 +100,12 @@
         });
         const total2026 = cum;
 
-        // Per-week amounts on the shared grid (difference between consecutive totals).
-        // For 2025 this is the same 7-day window last year.
-        const toWeekly = arr => arr.map((v, i) => {
+        // Per-week amounts (difference between consecutive totals).
+        const weekly2026Grid = data2026.map((v, i) => {
             if (v === null) return null;
-            const prev = i > 0 ? arr[i - 1] : null;
+            const prev = i > 0 ? data2026[i - 1] : null;
             return prev === null ? null : v - prev;
         });
-        const weekly2025Grid = toWeekly(data2025);
-        const weekly2026Grid = toWeekly(data2026);
 
         const tooltipTitle = i => {
             const x = grid[i];
@@ -179,7 +114,7 @@
             return w >= 1 ? `Week ${w}  ·  ${range}` : range;
         };
 
-        // 2026 only: per-type Gita counts (raw books) for the hovered week.
+        // Per-type Gita counts (raw books) for the hovered week.
         const GITA_TYPES = ['Small', 'Medium', 'Premium', 'Indian', 'Arabic'];
         const breakdownLines = i => {
             const w = (grid[i] - start26) / 7 - 1;
@@ -190,7 +125,6 @@
         };
 
         // Stats
-        document.getElementById('done2025').textContent = nf.format(total2025);
         const done = document.getElementById('done2026');
         done.classList.remove('loading');
         if (weekly2026) {
@@ -215,90 +149,77 @@
         goldFill.addColorStop(0, 'rgba(240, 180, 41, 0.35)');
         goldFill.addColorStop(0.6, 'rgba(240, 180, 41, 0.08)');
         goldFill.addColorStop(1, 'rgba(240, 180, 41, 0.0)');
-        const greyFill = ctx.createLinearGradient(0, 0, 0, h);
-        greyFill.addColorStop(0, 'rgba(107, 116, 153, 0.18)');
-        greyFill.addColorStop(1, 'rgba(107, 116, 153, 0.0)');
 
         const lastIndex = arr => {
             for (let i = arr.length - 1; i >= 0; i--) if (arr[i] !== null) return i;
             return -1;
         };
 
-        // Soft glow under the 2026 line.
+        // Soft glow under the line.
         const glowPlugin = {
             id: 'glow',
             beforeDatasetDraw(chart, args) {
-                if (args.index !== 1) return;
+                if (args.index !== 0) return;
                 chart.ctx.save();
                 chart.ctx.shadowColor = 'rgba(240, 180, 41, 0.55)';
                 chart.ctx.shadowBlur = 14;
             },
             afterDatasetDraw(chart, args) {
-                if (args.index === 1) chart.ctx.restore();
+                if (args.index === 0) chart.ctx.restore();
             },
         };
 
-        // Pulsing "live" dot on the latest 2026 point + value tags at the end of each line.
+        // Pulsing "live" dot on the latest point + value tag.
         const endMarkersPlugin = {
             id: 'endMarkers',
             afterDatasetsDraw(chart) {
                 const { ctx: c, chartArea } = chart;
-                const tags = [
-                    { ds: 0, bg: '#2a3357', fg: '#c3cbe0', border: 'rgba(140, 155, 180, 0.35)' },
-                    { ds: 1, bg: COLORS.gold, fg: '#111827', border: COLORS.gold },
-                ];
+                if (!chart.isDatasetVisible(0)) return;
+                const data = chart.data.datasets[0].data;
+                const idx = lastIndex(data);
+                if (idx < 1) return;
+                const p = chart.getDatasetMeta(0).data[idx];
 
                 // Pulse
-                const i26 = lastIndex(chart.data.datasets[1].data);
-                if (i26 > 0 && chart.isDatasetVisible(1)) {
-                    const p = chart.getDatasetMeta(1).data[i26];
-                    const t = (performance.now() % 1800) / 1800;
-                    c.save();
-                    c.beginPath();
-                    c.arc(p.x, p.y, 6 + t * 14, 0, Math.PI * 2);
-                    c.fillStyle = `rgba(240, 180, 41, ${0.45 * (1 - t)})`;
-                    c.fill();
-                    c.beginPath();
-                    c.arc(p.x, p.y, 6, 0, Math.PI * 2);
-                    c.fillStyle = COLORS.gold;
-                    c.strokeStyle = '#111827';
-                    c.lineWidth = 2;
-                    c.fill();
-                    c.stroke();
-                    c.restore();
-                }
+                const t = (performance.now() % 1800) / 1800;
+                c.save();
+                c.beginPath();
+                c.arc(p.x, p.y, 6 + t * 14, 0, Math.PI * 2);
+                c.fillStyle = `rgba(240, 180, 41, ${0.45 * (1 - t)})`;
+                c.fill();
+                c.beginPath();
+                c.arc(p.x, p.y, 6, 0, Math.PI * 2);
+                c.fillStyle = COLORS.gold;
+                c.strokeStyle = '#111827';
+                c.lineWidth = 2;
+                c.fill();
+                c.stroke();
+                c.restore();
 
-                // Tags
-                for (const tag of tags) {
-                    if (!chart.isDatasetVisible(tag.ds)) continue;
-                    const data = chart.data.datasets[tag.ds].data;
-                    const idx = lastIndex(data);
-                    if (idx < 1) continue;
-                    const p = chart.getDatasetMeta(tag.ds).data[idx];
-                    const text = nf.format(data[idx]);
-                    c.save();
-                    c.font = "700 13px 'Inter', sans-serif";
-                    const w = c.measureText(text).width + 22;
-                    const th = 28;
-                    let x = Math.min(Math.max(p.x - w / 2, chartArea.left), chartArea.right - w);
-                    let y = p.y - th - 14;
-                    if (y < chartArea.top) y = p.y + 14;
-                    c.beginPath();
-                    c.roundRect(x, y, w, th, 14);
-                    c.fillStyle = tag.bg;
-                    c.shadowColor = 'rgba(0, 0, 0, 0.35)';
-                    c.shadowBlur = 10;
-                    c.fill();
-                    c.shadowBlur = 0;
-                    c.strokeStyle = tag.border;
-                    c.lineWidth = 1;
-                    c.stroke();
-                    c.fillStyle = tag.fg;
-                    c.textAlign = 'center';
-                    c.textBaseline = 'middle';
-                    c.fillText(text, x + w / 2, y + th / 2 + 1);
-                    c.restore();
-                }
+                // Tag
+                const text = nf.format(data[idx]);
+                c.save();
+                c.font = "700 13px 'Inter', sans-serif";
+                const w = c.measureText(text).width + 22;
+                const th = 28;
+                let x = Math.min(Math.max(p.x - w / 2, chartArea.left), chartArea.right - w);
+                let y = p.y - th - 14;
+                if (y < chartArea.top) y = p.y + 14;
+                c.beginPath();
+                c.roundRect(x, y, w, th, 14);
+                c.fillStyle = COLORS.gold;
+                c.shadowColor = 'rgba(0, 0, 0, 0.35)';
+                c.shadowBlur = 10;
+                c.fill();
+                c.shadowBlur = 0;
+                c.strokeStyle = COLORS.gold;
+                c.lineWidth = 1;
+                c.stroke();
+                c.fillStyle = '#111827';
+                c.textAlign = 'center';
+                c.textBaseline = 'middle';
+                c.fillText(text, x + w / 2, y + th / 2 + 1);
+                c.restore();
             },
         };
 
@@ -307,18 +228,6 @@
             data: {
                 labels: grid.map(dayLabel),
                 datasets: [
-                    {
-                        label: '2025',
-                        data: data2025,
-                        borderColor: COLORS.lastYear,
-                        backgroundColor: greyFill,
-                        borderWidth: 2,
-                        fill: true,
-                        pointRadius: 0,
-                        pointHoverRadius: 5,
-                        pointHoverBackgroundColor: COLORS.lastYear,
-                        tension: 0.35,
-                    },
                     {
                         label: '2026',
                         data: data2026,
@@ -346,29 +255,12 @@
                 plugins: {
                     title: {
                         display: true,
-                        text: '2025 vs 2026',
+                        text: '2026 Campaign',
                         color: COLORS.text,
                         font: { size: 20, weight: 700 },
                         padding: { top: 6, bottom: 18 },
                     },
-                    legend: {
-                        labels: {
-                            color: COLORS.legend,
-                            usePointStyle: true,
-                            pointStyle: 'circle',
-                            boxWidth: 9,
-                            boxHeight: 9,
-                            padding: 28,
-                            font: { size: 14, weight: 500 },
-                            generateLabels: c => Chart.defaults.plugins.legend.labels.generateLabels(c).map(l => ({
-                                ...l,
-                                fillStyle: l.datasetIndex === 1 ? COLORS.gold : 'transparent',
-                                strokeStyle: l.datasetIndex === 1 ? COLORS.gold : COLORS.lastYear,
-                                lineWidth: 3,
-                                lineDash: [],
-                            })),
-                        },
-                    },
+                    legend: { display: false },
                     tooltip: {
                         backgroundColor: COLORS.tooltipBg,
                         titleColor: COLORS.text,
@@ -384,20 +276,16 @@
                         boxPadding: 8,
                         usePointStyle: true,
                         filter: c => c.parsed.y !== null && !Number.isNaN(c.parsed.y),
-                        itemSort: (a, b) => b.datasetIndex - a.datasetIndex,
                         callbacks: {
                             title: items => (items.length ? tooltipTitle(items[0].dataIndex) : ''),
                             label: c => {
-                                const wk = (c.datasetIndex === 1 ? weekly2026Grid : weekly2025Grid)[c.dataIndex];
+                                const wk = weekly2026Grid[c.dataIndex];
                                 const week = wk === null ? '' : `${nf.format(wk)} this week  ·  `;
                                 return `${c.dataset.label}:  ${week}${nf.format(c.parsed.y)} total`;
                             },
-                            afterLabel: c => (c.datasetIndex === 1 ? breakdownLines(c.dataIndex) : []),
+                            afterLabel: c => breakdownLines(c.dataIndex),
                             labelPointStyle: () => ({ pointStyle: 'circle', rotation: 0 }),
-                            labelColor: c => ({
-                                borderColor: c.datasetIndex === 1 ? COLORS.gold : COLORS.lastYear,
-                                backgroundColor: c.datasetIndex === 1 ? COLORS.gold : COLORS.lastYear,
-                            }),
+                            labelColor: () => ({ borderColor: COLORS.gold, backgroundColor: COLORS.gold }),
                         },
                     },
                 },
@@ -409,7 +297,7 @@
                     },
                     y: {
                         beginAtZero: true,
-                        suggestedMax: Math.max(CAMPAIGN_2026.goal, total2025) * 1.08,
+                        suggestedMax: CAMPAIGN_2026.goal * 1.08,
                         grid: { color: COLORS.grid },
                         border: { display: false },
                         ticks: {
@@ -435,6 +323,11 @@
         let breakdown2026 = null;
         try {
             const config = await (await fetch('config.json')).json();
+            if (config.LOGO) {
+                const logo = document.getElementById('logo');
+                logo.src = config.LOGO;
+                logo.hidden = false;
+            }
             const response = await fetch(config.GOOGLE_APP_SCRIPT_URL);
             if (!response.ok) throw new Error('Could not fetch data from Google Apps Script');
             const payload = await response.json();
