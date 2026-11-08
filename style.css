@@ -76,26 +76,15 @@ body {
     width: 100%;
 }
 
-/* Stat card */
-.stats-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 30px;
-    align-items: stretch;
-}
-
-.stat-col {
+/* Summary: one card with three KPIs, notes underneath */
+.summary {
     display: flex;
     flex-direction: column;
     gap: 14px;
 }
 
 .stat-card {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 28px 32px;
+    padding: 32px 40px;
 }
 
 .stat-card.current {
@@ -103,39 +92,33 @@ body {
     box-shadow: 0 10px 30px rgba(240, 180, 41, 0.08), 0 10px 25px rgba(0, 0, 0, 0.2);
 }
 
-.stat-year {
-    font-size: 30px;
-    font-weight: 800;
-    letter-spacing: -0.5px;
-    line-height: 1;
-    margin-bottom: 22px;
-    background: linear-gradient(135deg, var(--accent-gold), var(--accent-orange));
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+/* Three equal columns, centred, with thin dividers between them */
+.kpis {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    text-align: center;
 }
 
-.kpis {
-    display: flex;
-    gap: 40px;
-    flex-wrap: wrap;
+.kpi + .kpi {
+    border-left: 1px solid rgba(140, 155, 180, 0.15);
 }
 
 .kpi-label {
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 16px;
+    font-weight: 700;
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 1.5px;
-    margin-bottom: 8px;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
 }
 
 .kpi-value {
-    font-size: 34px;
+    font-size: 44px;
     font-weight: 800;
     letter-spacing: -0.5px;
     line-height: 1.1;
     color: var(--text-main);
+    font-variant-numeric: tabular-nums;
 }
 
 .kpi-value.green {
@@ -143,26 +126,33 @@ body {
 }
 
 .progress {
-    height: 10px;
-    margin-top: 24px;
+    height: 12px;
+    margin-top: 28px;
     background: rgba(17, 24, 39, 0.8);
-    border-radius: 10px;
+    border-radius: 12px;
     overflow: hidden;
 }
 
 .progress > div {
     height: 100%;
     width: 0;
-    border-radius: 10px;
+    border-radius: 12px;
     background: linear-gradient(90deg, var(--accent-gold), var(--accent-green));
     box-shadow: 0 0 12px rgba(52, 196, 124, 0.45);
     transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Start date under each card */
+/* Notes under the card: one line on laptop, wraps on phone */
+.notes {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px 28px;
+}
+
 .start-note {
     text-align: center;
-    font-size: 13px;
+    font-size: 14px;
     color: var(--text-muted);
     letter-spacing: 0.3px;
 }
@@ -183,6 +173,7 @@ body {
     100% { opacity: 0.6; }
 }
 
+/* Tablet / small laptop */
 @media (max-width: 768px) {
     body { padding: 24px 12px 36px; }
     .header { gap: 14px; }
@@ -190,8 +181,17 @@ body {
     .header h1 { font-size: 24px; }
     .chart-container { height: 40vh; min-height: 280px; }
     .chart-panel { padding: 16px; }
-    .stats-grid { grid-template-columns: 1fr; gap: 24px; }
-    .stat-card { padding: 22px 24px; }
-    .kpis { gap: 28px; }
-    .kpi-value { font-size: 28px; }
+    .stat-card { padding: 22px 16px; }
+    .kpi-label { font-size: 13px; letter-spacing: 1.2px; }
+    .kpi-value { font-size: 30px; }
+    .notes { flex-direction: column; align-items: center; }
+}
+
+/* Phone: keep three columns, just tighter */
+@media (max-width: 420px) {
+    .stat-card { padding: 20px 8px; }
+    .kpi { padding: 0 4px; }
+    .kpi-label { font-size: 11px; letter-spacing: 0.8px; margin-bottom: 6px; }
+    .kpi-value { font-size: 22px; }
+    .progress { margin: 20px 8px 0; }
 }
