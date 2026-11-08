@@ -20,28 +20,27 @@
         <div class="chart-container"><canvas id="ltgChart"></canvas></div>
     </section>
 
-    <section class="stats-grid">
-        <div class="stat-col">
-            <div class="stat-card current">
-                <div class="stat-year">2026</div>
-                <div class="kpis">
-                    <div class="kpi">
-                        <div class="kpi-label">Goal</div>
-                        <div class="kpi-value">31,000</div>
-                    </div>
-                    <div class="kpi">
-                        <div class="kpi-label">Done so far</div>
-                        <div class="kpi-value loading" id="done2026">…</div>
-                    </div>
-                    <div class="kpi">
-                        <div class="kpi-label">Progress</div>
-                        <div class="kpi-value green" id="pct2026">–</div>
-                    </div>
+    <section class="summary">
+        <div class="stat-card current">
+            <div class="kpis">
+                <div class="kpi">
+                    <div class="kpi-label">Goal</div>
+                    <div class="kpi-value">31,000</div>
                 </div>
-                <div class="progress"><div id="progress2026"></div></div>
+                <div class="kpi">
+                    <div class="kpi-label">Done so far</div>
+                    <div class="kpi-value loading" id="done2026">…</div>
+                </div>
+                <div class="kpi">
+                    <div class="kpi-label">Progress</div>
+                    <div class="kpi-value green" id="pct2026">–</div>
+                </div>
             </div>
-            <div class="start-note">Started <strong>27 Sep 2026</strong></div>
-            <div class="start-note">Medium Gita counts <strong>1.5</strong> · Premium <strong>3</strong></div>
+            <div class="progress"><div id="progress2026"></div></div>
+        </div>
+        <div class="notes">
+            <span class="start-note">Started <strong>27 Sep 2026</strong></span>
+            <span class="start-note">Medium Gita counts <strong>1.5</strong> · Premium <strong>3</strong></span>
         </div>
     </section>
 </main>
@@ -223,6 +222,31 @@
             },
         };
 
+        // Dashed horizontal line marking the 31K goal.
+        const goalLinePlugin = {
+            id: 'goalLine',
+            beforeDatasetsDraw(chart) {
+                const { ctx: c, chartArea, scales: { y } } = chart;
+                const yPos = y.getPixelForValue(CAMPAIGN_2026.goal);
+                if (yPos < chartArea.top || yPos > chartArea.bottom) return;
+                c.save();
+                c.beginPath();
+                c.setLineDash([6, 6]);
+                c.moveTo(chartArea.left, yPos);
+                c.lineTo(chartArea.right, yPos);
+                c.strokeStyle = 'rgba(52, 196, 124, 0.8)';
+                c.lineWidth = 2;
+                c.stroke();
+                c.setLineDash([]);
+                c.font = "700 13px 'Inter', sans-serif";
+                c.fillStyle = '#34c47c';
+                c.textAlign = 'left';
+                c.textBaseline = 'bottom';
+                c.fillText(`Goal ${nf.format(CAMPAIGN_2026.goal)}`, chartArea.left + 8, yPos - 6);
+                c.restore();
+            },
+        };
+
         const chart = new Chart(ctx, {
             type: 'line',
             data: {
@@ -249,17 +273,11 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                layout: { padding: { top: 8, right: 12 } },
+                layout: { padding: { top: 16, right: 12 } },
                 interaction: { mode: 'index', intersect: false },
                 animation: { duration: 1400, easing: 'easeOutQuart' },
                 plugins: {
-                    title: {
-                        display: true,
-                        text: '2026 Campaign',
-                        color: COLORS.text,
-                        font: { size: 20, weight: 700 },
-                        padding: { top: 6, bottom: 18 },
-                    },
+                    title: { display: false },
                     legend: { display: false },
                     tooltip: {
                         backgroundColor: COLORS.tooltipBg,
@@ -308,7 +326,7 @@
                     },
                 },
             },
-            plugins: [glowPlugin, endMarkersPlugin],
+            plugins: [goalLinePlugin, glowPlugin, endMarkersPlugin],
         });
 
         // Keep the live dot pulsing.
