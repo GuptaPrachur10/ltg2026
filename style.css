@@ -76,10 +76,10 @@ body {
     width: 100%;
 }
 
-/* Stat cards: 2025 compact, 2026 wider */
+/* Stat card */
 .stats-grid {
     display: grid;
-    grid-template-columns: 2fr 3fr;
+    grid-template-columns: 1fr;
     gap: 30px;
     align-items: stretch;
 }
@@ -113,12 +113,6 @@ body {
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
-}
-
-.stat-year.muted {
-    background: none;
-    -webkit-text-fill-color: var(--text-muted);
-    color: var(--text-muted);
 }
 
 .kpis {
@@ -176,22 +170,6 @@ body {
 .start-note strong {
     color: var(--text-main);
     font-weight: 600;
-}
-
-/* 2026 side note on how Gitas are counted */
-.count-note {
-    text-align: center;
-    font-size: 12px;
-    font-style: italic;
-    color: var(--text-muted);
-    letter-spacing: 0.2px;
-    margin-top: -6px;
-}
-
-.count-note strong {
-    color: var(--accent-gold);
-    font-weight: 600;
-    font-style: normal;
 }
 
 .loading {
