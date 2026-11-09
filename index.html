@@ -48,6 +48,7 @@
 <script>
     const CAMPAIGN_2026 = {
         start: '2026-09-27',
+        week1End: '2026-10-04', // Week 1 runs 27 Sep - 4 Oct (8 days); then Mon-Sun weeks (matches Code.gs)
         goal: 31000,
     };
 
@@ -61,7 +62,6 @@
         text: '#f4f6ff',
     };
 
-    // x = days since 1 Sep 2026.
     const DAY_MS = 24 * 60 * 60 * 1000;
     const nf = new Intl.NumberFormat('en-GB');
 
@@ -69,30 +69,41 @@
         const [y, m, d] = s.split('-').map(Number);
         return Date.UTC(y, m - 1, d);
     }
-    function seasonDay(ms, year) {
-        return Math.round((ms - Date.UTC(year, 8, 1)) / DAY_MS);
+    function fmtDay(ms) {
+        return new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
     }
-    function dayLabel(x) {
-        // x is "end of day x-1"; label with that last day.
-        return new Date(Date.UTC(2026, 8, 1) + (x - 1) * DAY_MS)
-            .toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+    // Start/end (UTC midnight) of campaign week k (1-based), same schedule as Code.gs.
+    function weekRange(k) {
+        const end = parseUTC(CAMPAIGN_2026.week1End) + 7 * (k - 1) * DAY_MS;
+        const start = k === 1 ? parseUTC(CAMPAIGN_2026.start) : end - 6 * DAY_MS;
+        return { start, end, days: Math.round((end - start) / DAY_MS) + 1 };
     }
 
     function render(weekly2026, breakdown2026) {
         const weeks = weekly2026 || [];
+        const numWeeks = Math.max(weeks.length, 1);
 
-        // Weekly grid: campaign start, then one point per week end.
-        const start26 = seasonDay(parseUTC(CAMPAIGN_2026.start), 2026);
-        const end26 = start26 + 7 * Math.max(weeks.length, 1);
-        const grid = [];
-        for (let x = start26; x <= end26; x += 7) grid.push(x);
+        // Point 0 = campaign start; point k = end of week k.
+        const labels = [fmtDay(parseUTC(CAMPAIGN_2026.start))];
+        for (let k = 1; k <= numWeeks; k++) labels.push(fmtDay(weekRange(k).end));
+
+        // Which week is today in (if any), and how many days into it.
+        const now = new Date();
+        const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+        let currentWeek = null, currentDay = 0;
+        for (let k = 1; k <= numWeeks; k++) {
+            const r = weekRange(k);
+            if (today >= r.start && today <= r.end) {
+                currentWeek = k;
+                currentDay = Math.round((today - r.start) / DAY_MS) + 1;
+            }
+        }
 
         // Cumulative 2026 series.
         let cum = 0, stopped = false;
-        const data2026 = grid.map(x => {
-            if (x === start26) return 0;
-            const w = (x - start26) / 7 - 1;
-            const v = weeks[w];
+        const data2026 = labels.map((_, i) => {
+            if (i === 0) return 0;
+            const v = weeks[i - 1];
             if (stopped || v === null || v === undefined || v === '') { stopped = true; return null; }
             cum += Number(v);
             return cum;
@@ -107,17 +118,16 @@
         });
 
         const tooltipTitle = i => {
-            const x = grid[i];
-            const range = `${dayLabel(x - 6)} – ${dayLabel(x)}`;
-            const w = (x - start26) / 7;
-            return w >= 1 ? `Week ${w}  ·  ${range}` : range;
+            if (i === 0) return `Campaign start  ·  ${labels[0]}`;
+            const r = weekRange(i);
+            const live = i === currentWeek ? '  ·  in progress' : '';
+            return `Week ${i}  ·  ${fmtDay(r.start)} – ${fmtDay(r.end)}${live}`;
         };
 
         // Per-type Gita counts (raw books) for the hovered week.
         const GITA_TYPES = ['Small', 'Medium', 'Premium', 'Indian', 'Arabic'];
         const breakdownLines = i => {
-            const w = (grid[i] - start26) / 7 - 1;
-            const b = breakdown2026 && breakdown2026[w];
+            const b = i > 0 && breakdown2026 && breakdown2026[i - 1];
             if (!b) return [];
             const types = GITA_TYPES.concat(Object.keys(b).filter(t => !GITA_TYPES.includes(t)));
             return types.filter(t => b[t]).map(t => `      ${t}: ${nf.format(b[t])}`);
@@ -250,7 +260,7 @@
         const chart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: grid.map(dayLabel),
+                labels,
                 datasets: [
                     {
                         label: '2026',
@@ -267,6 +277,10 @@
                         pointHoverBackgroundColor: COLORS.gold,
                         tension: 0.35,
                         spanGaps: false,
+                        // Dashed line into the week that's still in progress.
+                        segment: {
+                            borderDash: s => (s.p1DataIndex === currentWeek ? [6, 6] : undefined),
+                        },
                     },
                 ],
             },
@@ -298,7 +312,12 @@
                             title: items => (items.length ? tooltipTitle(items[0].dataIndex) : ''),
                             label: c => {
                                 const wk = weekly2026Grid[c.dataIndex];
-                                const week = wk === null ? '' : `${nf.format(wk)} this week  ·  `;
+                                let week = '';
+                                if (wk !== null) {
+                                    week = c.dataIndex === currentWeek
+                                        ? `${nf.format(wk)} so far (day ${currentDay} of ${weekRange(currentWeek).days})  ·  `
+                                        : `${nf.format(wk)} this week  ·  `;
+                                }
                                 return `${c.dataset.label}:  ${week}${nf.format(c.parsed.y)} total`;
                             },
                             afterLabel: c => breakdownLines(c.dataIndex),
