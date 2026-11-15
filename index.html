@@ -310,6 +310,27 @@
             },
         };
 
+        // Small "2025" name tag at the end of last year's line (name only, no number).
+        const lastYearLabelPlugin = {
+            id: 'lastYearLabel',
+            afterDatasetsDraw(chart) {
+                if (!chart.isDatasetVisible(1)) return;
+                const idx = lastIndex(chart.data.datasets[1].data);
+                if (idx < 0) return;
+                const p = chart.getDatasetMeta(1).data[idx];
+                const { ctx: c, chartArea } = chart;
+                c.save();
+                c.font = "700 13px 'Inter', sans-serif";
+                c.fillStyle = COLORS.legend;
+                c.textAlign = 'right';
+                c.textBaseline = 'bottom';
+                const x = Math.min(p.x, chartArea.right) - 4;
+                const y = Math.max(p.y - 8, chartArea.top + 14);
+                c.fillText('2025', x, y);
+                c.restore();
+            },
+        };
+
         // Dashed horizontal line marking the 31K goal.
         const goalLinePlugin = {
             id: 'goalLine',
@@ -437,7 +458,7 @@
                     },
                 },
             },
-            plugins: [goalLinePlugin, glowPlugin, endMarkersPlugin],
+            plugins: [goalLinePlugin, glowPlugin, lastYearLabelPlugin, endMarkersPlugin],
         });
 
         // Keep the live dot pulsing.
