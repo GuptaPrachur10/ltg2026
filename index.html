@@ -331,31 +331,6 @@
             },
         };
 
-        // Dashed horizontal line marking the 31K goal.
-        const goalLinePlugin = {
-            id: 'goalLine',
-            beforeDatasetsDraw(chart) {
-                const { ctx: c, chartArea, scales: { y } } = chart;
-                const yPos = y.getPixelForValue(CAMPAIGN_2026.goal);
-                if (yPos < chartArea.top || yPos > chartArea.bottom) return;
-                c.save();
-                c.beginPath();
-                c.setLineDash([6, 6]);
-                c.moveTo(chartArea.left, yPos);
-                c.lineTo(chartArea.right, yPos);
-                c.strokeStyle = 'rgba(52, 196, 124, 0.8)';
-                c.lineWidth = 2;
-                c.stroke();
-                c.setLineDash([]);
-                c.font = "700 13px 'Inter', sans-serif";
-                c.fillStyle = '#34c47c';
-                c.textAlign = 'left';
-                c.textBaseline = 'bottom';
-                c.fillText(`Goal ${nf.format(CAMPAIGN_2026.goal)}`, chartArea.left + 8, yPos - 6);
-                c.restore();
-            },
-        };
-
         const chart = new Chart(ctx, {
             type: 'line',
             data: {
@@ -458,7 +433,7 @@
                     },
                 },
             },
-            plugins: [goalLinePlugin, glowPlugin, lastYearLabelPlugin, endMarkersPlugin],
+            plugins: [glowPlugin, lastYearLabelPlugin, endMarkersPlugin],
         });
 
         // Keep the live dot pulsing.
