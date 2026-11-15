@@ -52,8 +52,16 @@
         goal: 31000,
     };
 
+    // Last year's campaign: shown only as a comparison line on the chart (numbers only on hover).
+    const CAMPAIGN_2025 = {
+        start: '2025-09-08',
+        end: '2026-01-07',
+        weekly: [961, 674, 532, 695, 1749, 947, 700, 796, 603, 212, 898, 1730, 8237, 4720, 105, 6609, 289, 131],
+    };
+
     const COLORS = {
         gold: '#f0b429',
+        lastYear: '#6b7499',
         legend: '#8c9bb4',
         ticks: '#8c9bb4',
         grid: 'rgba(240, 180, 41, 0.08)',
@@ -79,13 +87,63 @@
         return { start, end, days: Math.round((end - start) / DAY_MS) + 1 };
     }
 
+    // Calendar position: x = days since 1 Sep of the campaign's start year (x = start of that day),
+    // so 1 Dec 2025 and 1 Dec 2026 share the same x.
+    function seasonDay(ms, year) {
+        return Math.round((ms - Date.UTC(year, 8, 1)) / DAY_MS);
+    }
+    function xToMs(x) {
+        return Date.UTC(2026, 8, 1) + x * DAY_MS;
+    }
+    // Cumulative 2025 curve at its real week-end positions.
+    function curve2025() {
+        const startMs = parseUTC(CAMPAIGN_2025.start);
+        const endMs = parseUTC(CAMPAIGN_2025.end);
+        const pts = [{ x: seasonDay(startMs, 2025), y: 0 }];
+        let cum = 0;
+        CAMPAIGN_2025.weekly.forEach((v, i) => {
+            const lastDay = Math.min(startMs + (7 * i + 6) * DAY_MS, endMs);
+            cum += v;
+            pts.push({ x: seasonDay(lastDay, 2025) + 1, y: cum });
+        });
+        return pts;
+    }
+    function valueAt(pts, x) {
+        if (x <= pts[0].x) return 0;
+        for (let i = 1; i < pts.length; i++) {
+            if (x <= pts[i].x) {
+                const a = pts[i - 1], b = pts[i];
+                return a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x);
+            }
+        }
+        return pts[pts.length - 1].y;
+    }
+
     function render(weekly2026, breakdown2026) {
         const weeks = weekly2026 || [];
         const numWeeks = Math.max(weeks.length, 1);
+        const c25 = curve2025();
 
-        // Point 0 = campaign start; point k = end of week k.
-        const labels = [fmtDay(parseUTC(CAMPAIGN_2026.start))];
-        for (let k = 1; k <= numWeeks; k++) labels.push(fmtDay(weekRange(k).end));
+        // Chart points. Each point is the END of a period (x = start of the next day).
+        //  - campaign start (27 Sep) and the end of each 2026 week (week: 0..numWeeks)
+        //  - extra weekly points before/after so last year's line fits (week: null)
+        const startX = seasonDay(parseUTC(CAMPAIGN_2026.start), 2026);
+        const points = [{ x: startX, week: 0, label: fmtDay(parseUTC(CAMPAIGN_2026.start)) }];
+        for (let k = 1; k <= numWeeks; k++) {
+            const end = weekRange(k).end;
+            points.push({ x: seasonDay(end, 2026) + 1, week: k, label: fmtDay(end) });
+        }
+        while (points[0].x > c25[0].x) {
+            const x = points[0].x - 7;
+            points.unshift({ x, week: null, label: fmtDay(xToMs(x - 1)) });
+        }
+        const last25 = c25[c25.length - 1].x;
+        while (points[points.length - 1].x < last25) {
+            const x = points[points.length - 1].x + 7;
+            points.push({ x, week: null, label: fmtDay(xToMs(x - 1)) });
+        }
+        const labels = points.map(p => p.label);
+        const idxOfWeek = k => points.findIndex(p => p.week === k);
 
         // Which week is today in (if any), and how many days into it.
         const now = new Date();
@@ -98,36 +156,53 @@
                 currentDay = Math.round((today - r.start) / DAY_MS) + 1;
             }
         }
+        const currentIdx = currentWeek === null ? -1 : idxOfWeek(currentWeek);
 
         // Cumulative 2026 series.
         let cum = 0, stopped = false;
-        const data2026 = labels.map((_, i) => {
-            if (i === 0) return 0;
-            const v = weeks[i - 1];
+        const data2026 = points.map(p => {
+            if (p.week === null) return null;
+            if (p.week === 0) return 0;
+            const v = weeks[p.week - 1];
             if (stopped || v === null || v === undefined || v === '') { stopped = true; return null; }
             cum += Number(v);
             return cum;
         });
         const total2026 = cum;
 
-        // Per-week amounts (difference between consecutive totals).
-        const weekly2026Grid = data2026.map((v, i) => {
-            if (v === null) return null;
-            const prev = i > 0 ? data2026[i - 1] : null;
-            return prev === null ? null : v - prev;
+        // Cumulative 2025 series at the same calendar positions.
+        let reached25 = false;
+        const data2025 = points.map(p => {
+            if (reached25) return null;
+            if (p.x >= last25) reached25 = true;
+            return Math.round(valueAt(c25, p.x));
         });
 
+        // Per-week amounts (difference between consecutive totals).
+        const toWeekly = arr => arr.map((v, i) => {
+            if (v === null) return null;
+            const prev = i > 0 ? arr[i - 1] : null;
+            return prev === null ? null : v - prev;
+        });
+        const weekly2026Grid = toWeekly(data2026);
+        const weekly2025Grid = toWeekly(data2025);
+
         const tooltipTitle = i => {
-            if (i === 0) return `Campaign start  ·  ${labels[0]}`;
-            const r = weekRange(i);
-            const live = i === currentWeek ? '  ·  in progress' : '';
-            return `Week ${i}  ·  ${fmtDay(r.start)} – ${fmtDay(r.end)}${live}`;
+            const p = points[i];
+            if (p.week >= 1) {
+                const r = weekRange(p.week);
+                const live = p.week === currentWeek ? '  ·  In Progress' : '';
+                return `Week ${p.week}  ·  ${fmtDay(r.start)} – ${fmtDay(r.end)}${live}`;
+            }
+            const prevX = i > 0 ? points[i - 1].x : p.x - 7;
+            return `${fmtDay(xToMs(prevX))} – ${fmtDay(xToMs(p.x - 1))}`;
         };
 
-        // Per-type Gita counts (raw books) for the hovered week.
+        // Per-type Gita counts (raw books) for the hovered week (2026 only).
         const GITA_TYPES = ['Small', 'Medium', 'Premium', 'Indian', 'Arabic'];
         const breakdownLines = i => {
-            const b = i > 0 && breakdown2026 && breakdown2026[i - 1];
+            const k = points[i].week;
+            const b = k >= 1 && breakdown2026 && breakdown2026[k - 1];
             if (!b) return [];
             const types = GITA_TYPES.concat(Object.keys(b).filter(t => !GITA_TYPES.includes(t)));
             return types.filter(t => b[t]).map(t => `      ${t}: ${nf.format(b[t])}`);
@@ -158,6 +233,9 @@
         goldFill.addColorStop(0, 'rgba(240, 180, 41, 0.35)');
         goldFill.addColorStop(0.6, 'rgba(240, 180, 41, 0.08)');
         goldFill.addColorStop(1, 'rgba(240, 180, 41, 0.0)');
+        const greyFill = ctx.createLinearGradient(0, 0, 0, h);
+        greyFill.addColorStop(0, 'rgba(107, 116, 153, 0.18)');
+        greyFill.addColorStop(1, 'rgba(107, 116, 153, 0.0)');
 
         const lastIndex = arr => {
             for (let i = arr.length - 1; i >= 0; i--) if (arr[i] !== null) return i;
@@ -186,7 +264,7 @@
                 if (!chart.isDatasetVisible(0)) return;
                 const data = chart.data.datasets[0].data;
                 const idx = lastIndex(data);
-                if (idx < 1) return;
+                if (idx < 0 || !(points[idx].week >= 1)) return;
                 const p = chart.getDatasetMeta(0).data[idx];
 
                 // Pulse
@@ -269,7 +347,7 @@
                         backgroundColor: goldFill,
                         borderWidth: 3,
                         fill: true,
-                        pointRadius: c => (c.dataIndex > 0 && c.raw !== null ? 3.5 : 0),
+                        pointRadius: c => (points[c.dataIndex].week >= 1 && c.raw !== null ? 3.5 : 0),
                         pointBackgroundColor: '#111827',
                         pointBorderColor: COLORS.gold,
                         pointBorderWidth: 2,
@@ -277,10 +355,19 @@
                         pointHoverBackgroundColor: COLORS.gold,
                         tension: 0.35,
                         spanGaps: false,
-                        // Dashed line into the week that's still in progress.
-                        segment: {
-                            borderDash: s => (s.p1DataIndex === currentWeek ? [6, 6] : undefined),
-                        },
+                    },
+                    {
+                        // Last year: line only, no end tag; numbers appear on hover.
+                        label: '2025',
+                        data: data2025,
+                        borderColor: COLORS.lastYear,
+                        backgroundColor: greyFill,
+                        borderWidth: 2,
+                        fill: true,
+                        pointRadius: 0,
+                        pointHoverRadius: 5,
+                        pointHoverBackgroundColor: COLORS.lastYear,
+                        tension: 0.35,
                     },
                 ],
             },
@@ -308,21 +395,26 @@
                         boxPadding: 8,
                         usePointStyle: true,
                         filter: c => c.parsed.y !== null && !Number.isNaN(c.parsed.y),
+                        itemSort: (a, b) => a.datasetIndex - b.datasetIndex, // 2026 first, then 2025
                         callbacks: {
                             title: items => (items.length ? tooltipTitle(items[0].dataIndex) : ''),
                             label: c => {
-                                const wk = weekly2026Grid[c.dataIndex];
+                                const is2026 = c.datasetIndex === 0;
+                                const wk = (is2026 ? weekly2026Grid : weekly2025Grid)[c.dataIndex];
                                 let week = '';
                                 if (wk !== null) {
-                                    week = c.dataIndex === currentWeek
+                                    week = is2026 && c.dataIndex === currentIdx
                                         ? `${nf.format(wk)} so far (day ${currentDay} of ${weekRange(currentWeek).days})  ·  `
                                         : `${nf.format(wk)} this week  ·  `;
                                 }
                                 return `${c.dataset.label}:  ${week}${nf.format(c.parsed.y)} total`;
                             },
-                            afterLabel: c => breakdownLines(c.dataIndex),
+                            afterLabel: c => (c.datasetIndex === 0 ? breakdownLines(c.dataIndex) : []),
                             labelPointStyle: () => ({ pointStyle: 'circle', rotation: 0 }),
-                            labelColor: () => ({ borderColor: COLORS.gold, backgroundColor: COLORS.gold }),
+                            labelColor: c => {
+                                const col = c.datasetIndex === 0 ? COLORS.gold : COLORS.lastYear;
+                                return { borderColor: col, backgroundColor: col };
+                            },
                         },
                     },
                 },
